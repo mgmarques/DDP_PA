@@ -6,33 +6,87 @@ date        : Monday, June 23, 2014
 output      : ioslides_presentation
 framework   : html5slides   # {io2012, html5slides, shower, dzslides, ...}
 highlighter : highlight.js  # {highlight.js, prettify, highlight}
-hitheme     : tomorrow      # 
+hitheme     : mpg, prediction, linear regression 
 widgets     : bootstrap     # {mathjax, quiz, bootstrap}
 mode        : selfcontained # {standalone, draft}
 
 ---
+```{r GettingAndClennig, echo=FALSE, eval=TRUE, results='hide'}
+library(datasets)
+data(mtcars)
+summary(mtcars)
+str(mtcars)
+# With the summary and str analysis, we can see that a few data preparation is need to tidy the dataset, only need coerce some variables to class factor and logic as need.
 
-## R Markdown
+mtcars$am <- mtcars$am == 0
+names(mtcars)[9] <- "automatic"
+mtcars$vs <- mtcars$vs == 1
+mtcars$cyl <- factor(mtcars$cyl)
+mtcars$gear <- factor(mtcars$gear)
+mtcars$carb <- factor(mtcars$carb)
 
-This is an R Markdown presentation. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+## First, the mtcars is attached to the R search path. This means that the mtcars dataset is searched by R when evaluating a variable, so columns in the dataset can be accessed by simply giving their names.
+attach(mtcars)
+```  
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
 
-## Slide with Bullets
+## The Idea
+Now a days is too important think better about best opptions to improve motors performance, even more if we concider energy efficience. 
 
-- Bullet 1
-- Bullet 2
-- Bullet 3
+With this in mind, It's interesting find a way to predict **MPG** (*Miles/(US) gallon*) ussing a single linear regressing model between MPG and othes significants terms find in the mtcars dataset from datasets libriry. 
 
-## Slide with R Code and Output
+Our application allows to cross the result of a prediction with the existing data, and we can dynamically change both the graph as the input data for the prediction and see the effect on-line.
 
-```{r}
-summary(cars)
+## Exporatory Analysis
+```{r Explor1, echo=FALSE, eval=TRUE, results='hold'}
+par(mfrow=c(3,3),mar=c(4,4,1,1), cex=0.3, cex.main=1.5)
+boxplot(mpg ~ automatic, data=mtcars, names=c('Manual', 'Automatic'), main="MPG by Transmission Type")
+boxplot( mpg ~ cyl, data = mtcars, main="MPG by Number of Cylinders")
+boxplot( mpg ~ cyl*automatic, data = mtcars, main="MPG by Number of Cylinders and Transmission Type")
+
+plot(wt, mpg, col=automatic + 3, main="wt x MPG by Transmission Type")
+abline(lm(mpg~wt,data=mtcars[automatic==F,]),  col=4)
+abline(lm(mpg~wt,data=mtcars[automatic==T,]),  col=3)
+
+plot(disp, mpg, col=automatic + 3, main="disp x MPG by Transmission Type")
+abline(lm(mpg~disp,data=mtcars[automatic==F,]),  col=4)
+abline(lm(mpg~disp,data=mtcars[automatic==T,]),  col=3)
+
+plot(hp, mpg,  col=automatic + 3, main="hp x MPG by Transmission Type")
+abline(lm(mpg~hp,data=mtcars[automatic==F,]),  col=4)
+abline(lm(mpg~hp,data=mtcars[automatic==T,]),  col=3)
+
+plot(qsec, mpg, col=automatic + 3, main="qsec x MPG by Transmission Type")
+abline(lm(mpg~qsec,data=mtcars[automatic==FALSE,]),  col=4)
+abline(lm(mpg~qsec,data=mtcars[automatic==TRUE,]),  col=3)
+
+plot(drat, mpg,  col=automatic + 3, main="drat x MPG by Transmission Type")
+abline(lm(mpg~drat,data=mtcars[automatic==F,]),  col=4)
+abline(lm(mpg~drat,data=mtcars[automatic==T,]),  col=3)
+
+```  
+<p style="font-size: 75%;">Look this distributions and their linear regressions, we expect a good model with start with automatic and include hp and wt or disp, since the last two appears similars. The drat and qseq maybe change the signal of our others coefficients, and tend to suffer with their outliers.</p>  
+
+## The Prediction Model  
+
+Our analysis identify a better model **lm(mpg ~ automatic + hp + wt +I(cyl==6) )**, wath is confirmed by anova function evaluation.  This model presents a good predictions of MPG, with:  
+```{r RMopt5, echo=FALSE, eval=TRUE, results='hide'}
+fitOpt5 <- lm( mpg ~ automatic + hp + wt +I(cyl==6) , data=mtcars )
+sm <- summary(fitOpt5)
+
+```  
+- Minus residuals, where's we can see a **decrease MPG in -2.266 if the transmission is automatic** 
+- **Attend** our choose of **10% to likelihood ration test** apply at all coefficients.  
+- The **Residual standard error**, now to **`r sm$sigma`** on `r max(sm$df)` degrees of freedom, <u>our best</u>.  
+```{r RMprint, echo=FALSE, eval=TRUE, results='hold'}
+print(sm$coefficients)
+``` 
+
+## Model Results and Residuals Analisis
+
+```{r summaryData, echo=FALSE, eval=TRUE, results='hold'}
+par(mfrow=c(2,3))
+hist(fitOpt5$residuals, main="Best Model Plots:")
+plot(fitOpt5)
 ```
-
-## Slide with Plot
-
-```{r, echo=FALSE}
-plot(cars)
-```
-
+<p style="font-size: 75%;">**Note**: The influence of other cylinders (4 and 8) is too similar, with same impact, and don't change  much the model performance, so we use model **lm(mpg ~ automatic + hp + wt + cyl)** to apply in our application for you can see it by yourself.</p>
